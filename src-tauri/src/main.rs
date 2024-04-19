@@ -1,5 +1,6 @@
 // Prevents additional console window on Windows in release, DO NOT REMOVE!!
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+use std::string;
 use std::{collections::HashMap, fs};
 use std::sync::Mutex;
 use serde::{Serialize, Deserialize};
@@ -64,6 +65,21 @@ fn open_file(state: tauri::State<GlobalState>, path: String, name: String, langu
     let mut recents = state.recents.lock().unwrap();
     recents.push(path);
     return content
+}
+
+#[tauri::command]
+fn new_file(state: tauri::State<GlobalState>, path: String, name: String, language: String, icon: String) -> String {
+    let mut files = state.files.lock().unwrap();
+    files.insert(path.clone(), File {
+        name: name,
+        content: "".to_owned(),
+        modified: false,
+        language: language,
+        icon: icon,
+    });
+    let mut recents = state.recents.lock().unwrap();
+    recents.push(path);
+    return "".to_owned();
 }
 
 #[tauri::command]
@@ -160,7 +176,8 @@ fn main() {
             update_open_file,
             close_file,
             get_open_file,
-            is_open_files_empty
+            is_open_files_empty,
+            new_file
             ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -3,9 +3,6 @@ class File {
       this.name = "";
       this.content = "";
       this.modfied = false;
-    }   
-
-    ijkl
-    //jasn
+    }
 }
 export default File

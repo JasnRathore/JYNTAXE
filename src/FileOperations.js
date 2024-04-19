@@ -1,5 +1,5 @@
 import { invoke } from "@tauri-apps/api/tauri";
-import { open } from "@tauri-apps/api/dialog"
+import { open, save } from "@tauri-apps/api/dialog"
 
 export async function openFile() {
     const selected = await open({
@@ -16,7 +16,24 @@ export async function openFile() {
       return [ selected, newFileName, newFileType, newFileIcon ,content ]
     }
     return []
-  }
+}
+
+export async function newFile() {
+  const path = await save({
+    filters: [{
+      name: 'All Files',
+      extensions: ['*']
+  }]});
+  if (path) {
+    let temp = path.split("\\");
+    const newFileName = temp[temp.length-1];
+    temp = newFileName.split(".");
+    const [newFileType, newFileIcon] = getFileTypeIcon(temp[temp.length-1]);
+    const content = await invoke("new_file", { path: path, name: newFileName, language: newFileType, icon: newFileIcon });
+    return [ path, newFileName, newFileType, newFileIcon ,content ]
+  };
+  return []
+}
 
 export async function openFolder() {
     const selected = await open({
@@ -58,19 +75,36 @@ export async function isOpenFilesEmpty() {
   return status
 }
 
+
 function getFileTypeIcon(input){
     switch(input){
-      case "rs":
-        return ["rust","rust"];
+      case "txt":
+        return["plaintext","text"]
+      case "c":
+        return ["c","c"]
+      case "clj":
+        return ["clojure","clojure"]
+      case "cpp":
+        return ["cpp","cpp"]
+      case "cs":
+        return ["csharp","csharp"]
+      case "css":
+          return ["css","css"]
+      case "html":
+          return ["html","html"]
       case "js":
-        return ["javascript", "js"];
+        return ["javascript", "js"]
       case "jsx":
-        return ["javascript", "react"];
-      case "ts":
-        return ["typecript", "typecript"];
-      case "tsx":
-        return ["typescript", "reactts"];
+        return ["javascript", "react"]
       case "py":
         return ["python","python"]
+      case "rs":
+        return ["rust","rust"]
+      case "ts":
+        return ["typecript", "typecript"]
+      case "tsx":
+        return ["typescript", "reactts"]
+      default:
+        return["plaintext","text"]
     }
 }

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { exit } from "@tauri-apps/api/process"
-import { getOpenFile, openFile,  openFolder, saveFile, closeFile, isOpenFilesEmpty } from "./FileOperations"
+import { getOpenFile, openFile,  openFolder, saveFile, closeFile, isOpenFilesEmpty, newFile } from "./FileOperations"
 
 import CodeEditor from "./CodeEditor";
 import CommandMenu from "./components/CommandMenu";
@@ -10,9 +10,26 @@ import Home from "./Home";
 import "./App.css";
 
 //toast = {
-//  type: Error/Warning/Success
+//  type: error/warning/success
 //  message: String
 //}
+
+function createCommand(command, action, keys) {
+    const last = keys.length -1;
+    const styledKeys = keys.map((key, index) => {
+      return (<>
+      <span className="bg-zinc-900 py-[0.5px] px-1 rounded-md border-x border-t border-b-2 border-zinc-700">{key}</span>{(!(last === index) ? "+" : "")}
+      </>)
+    });
+    return {
+      command: command,
+      action: action,
+      keys: (
+        <div className="flex flex-row gap-1 items-center">
+        {styledKeys}
+        </div>),
+    }
+}
 
 function closeApplication(code) {
     exit(code);
@@ -41,7 +58,7 @@ function App() {
       }
 
     const newtoast = (
-      <div className="mr-5 mb-5 border border-zinc-600 rounded-md flex flex-row origin-bottom-right animate-Toast">
+      <div className="mr-5 mb-5 pr-4 border border-zinc-600 rounded-md flex flex-row origin-bottom-right animate-Toast">
           <div id="indicator" className={`${color} size-3 rounded-md border-l border-zinc-600 ml-[-4px] mt-[-4px] animate-ping`}>
           </div>
           <div id="indicator" className={`${color} size-2.5 rounded-md border-l border-zinc-600 ml-[-11px] mt-[-3px]`}>
@@ -69,9 +86,8 @@ function App() {
       useToast("warning", "No File Currently Open");
     };
   }
-
-  const fileOpenHandler = async () => {
-    const [newFilePath, newFileName, newFileType, newFileIcon , FileData] = await openFile();
+  const fileNewHandler = async () => {
+    const [newFilePath, newFileName, newFileType, newFileIcon , FileData] = await newFile();
           if (newFilePath) {
             SetContent(FileData);
             SetFileType(newFileType);
@@ -79,6 +95,18 @@ function App() {
             SetFileIcon(newFileIcon);
             SetFilePath(newFilePath);
             SetHomeState(false);
+    }
+  }
+
+  const fileOpenHandler = async () => {
+    const [newFilePath, newFileName, newFileType, newFileIcon , FileData] = await openFile();
+        if (newFilePath) {
+          SetContent(FileData);
+          SetFileType(newFileType);
+          SetFileName(newFileName);
+          SetFileIcon(newFileIcon);
+          SetFilePath(newFilePath);
+          SetHomeState(false);
     }
   };
 
@@ -114,43 +142,32 @@ function App() {
     };
   };
 
-  const CommandOptions =
-    [
-       {command:"Open File", action: fileOpenHandler,
-       keys: (<div className="flex flex-row gap-1 items-center">
-        <span className="bg-zinc-900 py-[0.5px] px-1 rounded-md border-x border-t border-b-2 border-zinc-700">Ctrl</span>+
-        <span className="bg-zinc-900 py-[0.5px] px-1 rounded-md border-x border-t border-b-2 border-zinc-700">p</span>
-        </div>)
-      },
-        {command:"Open Folder", action: async () => {
-          openFolder();
-          //yet to implement
-        },
-        keys: (<div className="flex flex-row gap-1 items-center">
-        <span className="bg-zinc-900 py-[0.5px] px-1 rounded-md border-x border-t border-b-2 border-zinc-700">Ctrl</span>+
-        <span className="bg-zinc-900 py-[0.5px] px-1 rounded-md border-x border-t border-b-2 border-zinc-700">k</span>+
-        <span className="bg-zinc-900 py-[0.5px] px-1 rounded-md border-x border-t border-b-2 border-zinc-700">o</span>
-        </div>)
-      },
-        {command:"Save File", action: fileSaveHandler,
-        keys: (<div className="flex flex-row gap-1 items-center">
-        <span className="bg-zinc-900 py-[0.5px] px-1 rounded-md border-x border-t border-b-2 border-zinc-700">Ctrl</span>+
-        <span className="bg-zinc-900 py-[0.5px] px-1 rounded-md border-x border-t border-b-2 border-zinc-700">s</span>
-        </div>)
-      },
-        {command:"Close Application", action: async () => {closeApplication(0)},
-        keys: (<div className="flex flex-row gap-1 items-center">
-        <span className="bg-zinc-900 py-[0.5px] px-1 rounded-md border-x border-t border-b-2 border-zinc-700">Ctrl</span>+
-        <span className="bg-zinc-900 py-[0.5px] px-1 rounded-md border-x border-t border-b-2 border-zinc-700">q</span>
-        </div>)
-      },
-        {command:"Close File", action: fileCloseHandler,
-        keys: (<div className="flex flex-row gap-1 items-center">
-        <span className="bg-zinc-900 py-[0.5px] px-1 rounded-md border-x border-t border-b-2 border-zinc-700">Ctrl</span>+
-        <span className="bg-zinc-900 py-[0.5px] px-1 rounded-md border-x border-t border-b-2 border-zinc-700">q</span>
-        </div>)
-      },
-    ];
+  const [CommandOptions, setCommandOptions] = useState([
+      createCommand("New File", fileNewHandler, ["Ctrl","n"]),
+      createCommand("Open File", fileOpenHandler, ["Ctrl","o"]),
+      createCommand("Open Folder", async () => {
+        openFolder();
+        //yet to implement
+      }, ["Ctrl","k","o"]),
+      createCommand("Save File", fileSaveHandler, ["Ctrl","s"]),
+      createCommand("Close Application", () => {closeApplication(0)}, ["Ctrl","q"]),
+      createCommand("Close File", fileCloseHandler, ["Ctrl","w"]),
+    ]);
+
+  useEffect(() => {
+    setCommandOptions([
+      createCommand("New File", fileNewHandler, ["Ctrl","n"]),
+      createCommand("Open File", fileOpenHandler, ["Ctrl","o"]),
+      createCommand("Open Folder", async () => {
+        openFolder();
+        //yet to implement
+      }, ["Ctrl","k","o"]),
+      createCommand("Save File", fileSaveHandler, ["Ctrl","s"]),
+      createCommand("Close Application", () => {closeApplication(0)}, ["Ctrl","q"]),
+      createCommand("Close File", fileCloseHandler, ["Ctrl","w"]),
+    ]);
+  }, [isHomeOpen, FilePath, FileName]);
+
 
   let keys = {};
   useEffect( () => {
@@ -159,16 +176,18 @@ function App() {
         keys[currentKey] = true;
         if (event.ctrlKey && (currentKey === "o") && !keys["k"]) {
           await fileOpenHandler()
+          keys["o"] = false;
         }
         else if (event.ctrlKey && (currentKey === "o") && keys["k"]) {
           openFolder();
           keys["k"] = false;
           keys[currentKey] = false;
           SetHomeState(false);
-        } else if (event.ctrlKey && (currentKey === "w")) {
-          await fileCloseHandler();
-          keys["w"] = false;
+        } else if (event.ctrlKey && (currentKey === "n")) {
+            await fileOpenHandler()
+            keys["n"] = false;
         }
+
         //else if (event.ctrlKey && (currentKey === "p")) {
         //  event.preventDefault();
         //  keys["p"] = false;
@@ -199,6 +218,8 @@ function App() {
       keys[currentKey] = true;
       if (event.ctrlKey && (currentKey === "s")) {
         await fileSaveHandler();
+      } else if (event.ctrlKey && (currentKey === "w")) {
+        await fileCloseHandler();
       }
     }
     const remover = (event) => {

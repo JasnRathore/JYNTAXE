@@ -3,9 +3,11 @@ import {Search} from "lucide-react";
 
 export default function CommandMenu({ CommandOptions }) {
     const [isopen, setOpen] = useState(false);
+    useEffect(()=>{
+      setTemp(CommandOptions);
+    },[CommandOptions])
 
-    const main = CommandOptions;
-    const [temp, setTemp] = useState(main);
+    const [temp, setTemp] = useState(CommandOptions);
     const inputRef = useRef(null);
 
     const [focusedIndex, setFocusedIndex] = useState(-1);
@@ -14,10 +16,10 @@ export default function CommandMenu({ CommandOptions }) {
     const handler = (event) => {
       const value = event.target.value.toLowerCase();
       setTemp([]);
-      for (let i = 0; i < main.length; i++) {
-        const CurrentValue = main[i].command;
+      for (let i = 0; i < CommandOptions.length; i++) {
+        const CurrentValue = CommandOptions[i].command;
         if (CurrentValue.toLowerCase().includes(value)) {
-          setTemp((temp) => [...temp, main[i]]);
+          setTemp((temp) => [...temp, CommandOptions[i]]);
         }
       }
     };
@@ -78,7 +80,7 @@ export default function CommandMenu({ CommandOptions }) {
           closingConditions.some((condition) => {
             if (condition) {
               setOpen(false);
-              setTemp(main);
+              setTemp(CommandOptions);
               inputRef.current.value = "";
               setFocusedIndex(-1);
               return true
