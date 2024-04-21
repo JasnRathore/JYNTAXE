@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef } from "react";
 import { getOpenFiles } from "../FileOperations"
+import { switchFile } from "../FileOperations";
 
-
-export default function OpenFilesViewer() {
+export default function OpenFilesViewer({setCurrentFile}) {
         const [temp, setTemp] = useState([]);
         const [isopen, setOpen] = useState(false);
 
@@ -48,10 +48,13 @@ export default function OpenFilesViewer() {
               const items = Object.entries(OpenFiles).map((val , index) => {
                 const tempPath = (val[0].split("\\"));
                 const path = tempPath.slice(0, tempPath.length-1).join("\\");
-                const changeFile = () => {
-                  setOpen(false);
 
+                const changeFile = () => {
+                  switchFile(val[0]);
+                  setCurrentFile(val[0]);
+                  setOpen(false);
                 };
+
                 return (
                   <button key={index} ref={(ref) => (buttonRefs.current[index] = ref)}
                     className="hover:bg-zinc-800 w-full text-left px-2 py-1 rounded-md focus:outline focus:outline-pink-400"

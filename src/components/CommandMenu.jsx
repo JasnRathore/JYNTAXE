@@ -28,12 +28,19 @@ export default function CommandMenu({ CommandOptions }) {
       const currentKey = event.key.toLowerCase()
       if (currentKey === "enter" && !(temp.length === 0)) {
         buttonRefs.current[0].focus();
-      }
+      } else if (currentKey === 'arrowup' || currentKey === 'arrowdown') {
+        event.preventDefault();
+    }
     }
 
     useEffect(() => {
       const handleKeyDown = (event) => {
         const currentKey = event.key.toLowerCase();
+        if (currentKey === "home") {
+          setFocusedIndex(0);
+        } else if (currentKey === "end") {
+          setFocusedIndex(temp.length-1);
+        }
         if (currentKey === "arrowup") {
           setFocusedIndex((prevIndex) =>
             prevIndex === 0 ? temp.length - 1 : prevIndex - 1
@@ -42,6 +49,8 @@ export default function CommandMenu({ CommandOptions }) {
           setFocusedIndex((prevIndex) =>
             prevIndex === temp.length - 1 ? 0 : prevIndex + 1
           );
+        } else if (currentKey !== "enter") {
+          handFocus();
         }
       };
 
@@ -74,8 +83,6 @@ export default function CommandMenu({ CommandOptions }) {
           setOpen(true);
           setTimeout(handFocus,10)
 
-        } else if (currentKey === "s" && event.shiftKey) {
-          setTimeout(handFocus,10)
         } else {
           closingConditions.some((condition) => {
             if (condition) {
@@ -98,11 +105,11 @@ export default function CommandMenu({ CommandOptions }) {
           <div className="flex flex-row items-center gap-2 border-zinc-600 border-b-[0.1px] p-2" >
           <Search size={20}/><input ref={inputRef} className="bg-black w-full p-1 outline-0" placeholder="Enter Command" onInput={handler} onKeyDown={handleReturn}></input>
           </div>
-          <div className="p-2 flex flex-col">
+          <div className="p-2 flex flex-col max-h-64 overflow-y-auto CommandMenuScrollBar">
           { (temp.length === 0) ? <p className="px-2 py-1">No Matching Commands</p>
           :
             temp.map((item, index) => (
-              <button key={index} ref={(ref) => (buttonRefs.current[index] = ref)} className="hover:bg-zinc-700 w-full text-left px-2 py-1 rounded-md flex flex-row  justify-between items-center focus:outline focus:outline-pink-400"
+              <button key={index} ref={(ref) => (buttonRefs.current[index] = ref)} className="hover:bg-zinc-800 w-full text-left px-2 py-1 rounded-md flex flex-row  justify-between items-center focus:outline focus:outline-pink-400 hover:outline-1 hover:outline hover:outline-pink-400"
               onClick={() => {
                 item.action();
                 setOpen(false);

@@ -1,11 +1,13 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { exit } from "@tauri-apps/api/process"
-import { getOpenFile, openFile,  openFolder, saveFile, closeFile, isOpenFilesEmpty, newFile } from "./FileOperations"
+import { getOpenFile, openFile,  openFolder, saveFile, closeFile, isOpenFilesEmpty, newFile, openNewWindow, getRecentFile } from "./FileOperations"
 
 import CodeEditor from "./CodeEditor";
 import CommandMenu from "./components/CommandMenu";
 import OpenFilesViewer from "./components/OpenFilesViewer";
+import { ConfirmDialog } from"./ConfirmDialog";
 import Home from "./Home";
+
 
 import "./App.css";
 
@@ -44,6 +46,8 @@ function App() {
   const [FileName, SetFileName] = useState("");
   const [FileIcon, SetFileIcon] = useState("");
   const [FilePath, SetFilePath] = useState("");
+
+  const [OpenConfirm, setOpenConfirm] = useState(false);
 
   const useToast = async (type, message) => {
       let color = "";
@@ -110,15 +114,25 @@ function App() {
     }
   };
 
+  const newWindowHandler = async () => {
+    const status = await openNewWindow();
+    if (status) {
+      useToast("success","Window Opened")
+    } else {
+      useToast("error","Opening Window Failed")
+    }
+  };
+
   const fileCloseHandler = async () => {
     if (!isHomeOpen) {
       const data = await getOpenFile(FilePath);
       if (data.status) {
         if (data.file.modified) {
-          useToast("warning", (FileName + ": Not saved"));
+          setOpenConfirm(true)
         } else {
           const closingStatus = await closeFile(FilePath);
           if (closingStatus) {
+            const tempName = FileName;
             const isEmpty = await isOpenFilesEmpty();
             if (isEmpty) {
               SetHomeState(true);
@@ -128,8 +142,20 @@ function App() {
               SetFileIcon("");
               SetFilePath("");
             } else {
-              useToast("", "moreFiles");
+              const recentFilePath = await getRecentFile();
+              const data = await getOpenFile(recentFilePath);
+              if (data.status) {
+                SetHomeState(false);
+                SetContent(data.file.content);
+                SetFileType(data.file.language);
+                SetFileName(data.file.name);
+                SetFileIcon(data.file.icon);
+                SetFilePath(recentFilePath);
+              } else {
+                useToast("error","Getting Recent File Failed");
+              }
             }
+            useToast("", (tempName+": Closed"))
           } else {
             useToast("error", "Closing Failed");
           }
@@ -142,6 +168,90 @@ function App() {
     };
   };
 
+  const setCurrentFile = async (path) => {
+    const data = await getOpenFile(path);
+    if (data.status) {
+      SetHomeState(false);
+      SetContent(data.file.content);
+      SetFileType(data.file.language);
+      SetFileName(data.file.name);
+      SetFileIcon(data.file.icon);
+      SetFilePath(path);
+    } else {
+      useToast("error","Changing Files Failed");
+    }
+  }
+
+  const handleConfirm = async (type) => {
+    if (type === "save") {
+      await fileSaveHandler();
+      const closingStatus = await closeFile(FilePath);
+      if (closingStatus) {
+        const tempName = FileName;
+        const isEmpty = await isOpenFilesEmpty();
+        if (isEmpty) {
+          SetHomeState(true);
+          SetContent("");
+          SetFileType("");
+          SetFileName("");
+          SetFileIcon("");
+          SetFilePath("");
+        } else {
+          const recentFilePath = await getRecentFile();
+          const data = await getOpenFile(recentFilePath);
+          if (data.status) {
+            SetHomeState(false);
+            SetContent(data.file.content);
+            SetFileType(data.file.language);
+            SetFileName(data.file.name);
+            SetFileIcon(data.file.icon);
+            SetFilePath(recentFilePath);
+          } else {
+            useToast("error","Getting Recent File Failed");
+          }
+        }
+        useToast("", (tempName+": Closed"))
+      } else {
+        useToast("error", "Closing Failed");
+      }
+      setOpenConfirm(false)
+    } else if (type === "dontsave" ) {
+      const closingStatus = await closeFile(FilePath);
+      if (closingStatus) {
+        const tempName = FileName;
+        const isEmpty = await isOpenFilesEmpty();
+        if (isEmpty) {
+          SetHomeState(true);
+          SetContent("");
+          SetFileType("");
+          SetFileName("");
+          SetFileIcon("");
+          SetFilePath("");
+        } else {
+          const recentFilePath = await getRecentFile();
+          const data = await getOpenFile(recentFilePath);
+          if (data.status) {
+            SetHomeState(false);
+            SetContent(data.file.content);
+            SetFileType(data.file.language);
+            SetFileName(data.file.name);
+            SetFileIcon(data.file.icon);
+            SetFilePath(recentFilePath);
+          } else {
+            useToast("error","Getting Recent File Failed");
+          }
+        }
+        useToast("", (tempName+": Closed"))
+      } else {
+        useToast("error", "Closing Failed");
+      }
+      setOpenConfirm(false)
+    } else if (type === "cancel") {
+      setOpenConfirm(false)
+    }
+
+  };
+
   const [CommandOptions, setCommandOptions] = useState([
       createCommand("New File", fileNewHandler, ["Ctrl","n"]),
       createCommand("Open File", fileOpenHandler, ["Ctrl","o"]),
@@ -149,6 +259,7 @@ function App() {
         openFolder();
         //yet to implement
       }, ["Ctrl","k","o"]),
+      createCommand("Open New Window", newWindowHandler, ["Ctrl","Shift","n"]),
       createCommand("Save File", fileSaveHandler, ["Ctrl","s"]),
       createCommand("Close Application", () => {closeApplication(0)}, ["Ctrl","q"]),
       createCommand("Close File", fileCloseHandler, ["Ctrl","w"]),
@@ -162,6 +273,7 @@ function App() {
         openFolder();
         //yet to implement
       }, ["Ctrl","k","o"]),
+      createCommand("Open New Window", newWindowHandler, ["Ctrl","Shift","n"]),
       createCommand("Save File", fileSaveHandler, ["Ctrl","s"]),
       createCommand("Close Application", () => {closeApplication(0)}, ["Ctrl","q"]),
       createCommand("Close File", fileCloseHandler, ["Ctrl","w"]),
@@ -183,10 +295,13 @@ function App() {
           keys["k"] = false;
           keys[currentKey] = false;
           SetHomeState(false);
-        } else if (event.ctrlKey && (currentKey === "n")) {
-            await fileOpenHandler()
+        } else if (event.ctrlKey && (currentKey === "n") && !event.shiftKey) {
+            await fileNewHandler()
             keys["n"] = false;
-        }
+        } else if (event.ctrlKey && (currentKey === "n") && event.shiftKey) {
+          await newWindowHandler();
+          keys["n"] = false;
+      }
 
         //else if (event.ctrlKey && (currentKey === "p")) {
         //  event.preventDefault();
@@ -239,7 +354,8 @@ function App() {
   return (
     <div className="h-screen p-0 bg-black w-screen font-Iosevka">
       <CommandMenu CommandOptions={CommandOptions}></CommandMenu>
-      <OpenFilesViewer></OpenFilesViewer>
+      <OpenFilesViewer setCurrentFile={setCurrentFile}></OpenFilesViewer>
+      <ConfirmDialog FileName={FileName} Open={OpenConfirm} handleConfirm={handleConfirm} ></ConfirmDialog>
       {
         isHomeOpen ? <Home/> :
         <div className="h-screen p-0 w-screen">

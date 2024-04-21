@@ -74,7 +74,19 @@ export async function isOpenFilesEmpty() {
   const status = await invoke("is_open_files_empty");
   return status
 }
+export async function openNewWindow() {
+  const status = await invoke("open_new_window");
+  return status
+}
 
+export async function switchFile(path) {
+  await invoke("switch_file", { path: path });
+}
+
+export async function getRecentFile() {
+  const path = await invoke("get_recent_file");
+  return path
+}
 
 function getFileTypeIcon(input){
     switch(input){

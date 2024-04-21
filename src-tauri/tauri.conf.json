@@ -14,8 +14,8 @@
       "all": false,
       "dialog": {
         "all": false,
-        "ask": false,
-        "confirm": false,
+        "ask": true,
+        "confirm": true,
         "message": false,
         "open": true,
         "save": true
@@ -43,7 +43,7 @@
     "bundle": {
       "active": true,
       "targets": "all",
-      "identifier": "com.tauri.dev",
+      "identifier": "jyntaxe.jasn.dev",
       "icon": [
         "icons/32x32.png",
         "icons/128x128.png",

@@ -1,9 +1,10 @@
 // Prevents additional console window on Windows in release, DO NOT REMOVE!!
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
-use std::string;
-use std::{collections::HashMap, fs};
+use std::{collections::{HashMap, VecDeque}, fs, path};
 use std::sync::Mutex;
 use serde::{Serialize, Deserialize};
+use std::process::Command;
+
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 struct File {
@@ -26,26 +27,34 @@ impl File {
     }
 }
 
-//#[derive(Serialize, Deserialize, Debug)]
-//struct FileChange {
-//    line: usize,
-//    content: String
-//}
 #[derive(Serialize, Deserialize, Debug)]
 struct TempOpenFile {
     status: bool,
     file: File,
 }
-
-
 struct GlobalState {
     files: Mutex<HashMap<String, File>>,
-    recents: Mutex<Vec<String>>
+    recents: Mutex<VecDeque<String>>
 }
 
 fn read_file(path: &str) -> String {
     let content = fs::read_to_string(path).expect("failed to read file");
     return content;
+}
+
+fn add_to_recent(item: String, recent_items: &mut VecDeque<String>, item_map: &mut HashMap<String, File>) {
+    if item_map.contains_key(&item) {
+        // Find and remove the item from the list
+        if let Some(index) = recent_items.iter().position(|x| x == &item) {
+            recent_items.remove(index);
+        }
+    } else if recent_items.len() >= item_map.len() {
+        // Remove the oldest item if the list is full
+        if let Some(last) = recent_items.pop_back() {
+            item_map.remove(&last);
+        }
+    }
+    recent_items.push_front(item);
 }
 
 #[tauri::command]
@@ -63,7 +72,8 @@ fn open_file(state: tauri::State<GlobalState>, path: String, name: String, langu
     });
 
     let mut recents = state.recents.lock().unwrap();
-    recents.push(path);
+    add_to_recent(path, &mut recents, &mut files);
+
     return content
 }
 
@@ -78,7 +88,8 @@ fn new_file(state: tauri::State<GlobalState>, path: String, name: String, langua
         icon: icon,
     });
     let mut recents = state.recents.lock().unwrap();
-    recents.push(path);
+    add_to_recent(path, &mut recents, &mut files);
+
     return "".to_owned();
 }
 
@@ -86,9 +97,33 @@ fn new_file(state: tauri::State<GlobalState>, path: String, name: String, langua
 fn close_file(state: tauri::State<GlobalState>, path: String) -> bool {
     let mut files = state.files.lock().unwrap();
     let _ = match files.remove(&path) {
-        Some(_) => return true,
+        Some(data) => data,
         None => return false
     };
+
+    let mut recents = state.recents.lock().unwrap();
+    match recents.pop_front() {
+        Some(_) => {
+            println!("{:?}", recents);
+            return true
+        },
+        None => return false
+    }
+
+}
+#[tauri::command]
+fn  switch_file(state: tauri::State<GlobalState>, path: String) {
+    let mut files = state.files.lock().unwrap();
+    let mut recents = state.recents.lock().unwrap();
+    add_to_recent(path, &mut recents, &mut files);
+    println!("{:?}", recents);
+}
+
+#[tauri::command]
+fn get_recent_file(state: tauri::State<GlobalState>) -> String {
+    let recents = state.recents.lock().unwrap();
+    let recent_file = recents.front().unwrap().to_owned();
+    return recent_file
 }
 
 #[tauri::command]
@@ -124,14 +159,6 @@ fn save_file(state: tauri::State<GlobalState>, path: String) -> bool {
         }
     };
     file.modified = false;
-    //match files.get_mut(&path) {
-    //    Some(file) => {
-    //        file.modified = false
-    //    },
-    //    None => {
-    //        return false;
-    //    }
-    //};
     match fs::write(path, file.content.clone()) {
         Ok(_) => return true,
         Err(_) => return false
@@ -157,15 +184,24 @@ fn get_open_files(state: tauri::State<GlobalState>) -> HashMap<String, String> {
     for file in files.keys() {
         let name: String = (files[file].name).clone();
         data.insert(file.to_string(), name);
-        //println!("{:?}", files[file].name);
     }
     return data;
+}
+
+#[tauri::command]
+ fn open_new_window() -> bool {
+    let mut command = Command::new(r#".\JYNTAXE.exe"#);
+    //command.arg("/S");
+    let _exit_status = match command.status() {
+        Ok(_) => return true,
+        Err(_) =>  return false
+    };
 }
 
 fn main() {
 
     let temp_files: HashMap<String, File> = HashMap::new();
-    let  state = GlobalState { files: Mutex::new(temp_files), recents: Mutex::new(Vec::new()) };
+    let  state = GlobalState { files: Mutex::new(temp_files), recents: Mutex::new(VecDeque::new()) };
 
     tauri::Builder::default()
         .manage(state)
@@ -177,7 +213,10 @@ fn main() {
             close_file,
             get_open_file,
             is_open_files_empty,
-            new_file
+            new_file,
+            open_new_window,
+            switch_file,
+            get_recent_file
             ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
