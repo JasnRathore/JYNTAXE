@@ -4,7 +4,7 @@ import { switchFile } from "../FileOperations";
 
 export default function OpenFilesViewer({setCurrentFile}) {
         const [temp, setTemp] = useState([]);
-        const [isopen, setOpen] = useState(false);
+        const [isOpen, setOpen] = useState(false);
 
         const [focusedIndex, setFocusedIndex] = useState(0);
         const buttonRefs = useRef([])
@@ -36,22 +36,22 @@ export default function OpenFilesViewer({setCurrentFile}) {
         }, [focusedIndex]);
 
         useEffect(() => {
-          const OpenMenu = async (event) => {
+          const openMenu = async (event) => {
             const currentKey = event.key.toLowerCase();
             const closingConditions = [
               (currentKey === "escape"),
               (currentKey === "p" && event.ctrlKey),
               (currentKey === "p" && event.ctrlKey && event.shiftKey),
             ]
-            if ((currentKey === "," || currentKey === ".") && event.altKey && !isopen)  {
+            if ((currentKey === "," || currentKey === ".") && event.altKey && !isOpen)  {
               const OpenFiles = await getOpenFiles();
-              const items = Object.entries(OpenFiles).map((val , index) => {
-                const tempPath = (val[0].split("\\"));
+              const items = OpenFiles.map((val , index) => {
+                const tempPath = (val.path.split("\\"));
                 const path = tempPath.slice(0, tempPath.length-1).join("\\");
-
                 const changeFile = () => {
-                  switchFile(val[0]);
-                  setCurrentFile(val[0]);
+                  switchFile(val.path);
+                  setCurrentFile(val.path);
+                  setFocusedIndex(0);
                   setOpen(false);
                 };
 
@@ -60,7 +60,7 @@ export default function OpenFilesViewer({setCurrentFile}) {
                     className="hover:bg-zinc-800 w-full text-left px-2 py-1 rounded-md focus:outline focus:outline-pink-400"
                     onClick={changeFile}
                   >
-                  {val[1]}
+                  {val.name}
                   <span className="ml-2 text-zinc-400 text-xs">{path}</span>
                   </button>
                 )
@@ -79,13 +79,29 @@ export default function OpenFilesViewer({setCurrentFile}) {
               });
             };
           }
+          const closeMenu = (event) => {
+            const currentKey = event.key.toLowerCase();
+            if (currentKey === "alt") {
+              buttonRefs.current[focusedIndex].click();
+            }
+          };
 
-          document.addEventListener("keydown", OpenMenu);
-          return () => document.removeEventListener("keydown", OpenMenu)
-        }, [isopen]);
+          document.addEventListener("keydown", openMenu);
+          document.addEventListener("keyup", closeMenu);
+          setTimeout(() => {
+            if  (buttonRefs.current[focusedIndex]) {
+              buttonRefs.current[focusedIndex].focus()
+            }
+          },10)
+
+          return () => {
+            document.removeEventListener("keydown", openMenu);
+            document.removeEventListener("keyup", closeMenu);;
+        }
+        }, [isOpen]);
 
         return (
-            <dialog className="border-[0.1px] border-zinc-600 bg-black text-white z-50 w-1/3 rounded-md mt-4" open={isopen}>
+            <dialog className="border-[0.1px] border-zinc-600 bg-black text-white z-50 w-1/3 rounded-md mt-4" open={isOpen}>
               <div className="p-2 flex flex-col">
               {
                 temp

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { exit } from "@tauri-apps/api/process"
 import { getOpenFile, openFile,  openFolder, saveFile, closeFile, isOpenFilesEmpty, newFile, openNewWindow, getRecentFile } from "./FileOperations"
 
@@ -7,7 +7,6 @@ import CommandMenu from "./components/CommandMenu";
 import OpenFilesViewer from "./components/OpenFilesViewer";
 import { ConfirmDialog } from"./ConfirmDialog";
 import Home from "./Home";
-
 
 import "./App.css";
 
@@ -359,9 +358,9 @@ function App() {
       {
         isHomeOpen ? <Home/> :
         <div className="h-screen p-0 w-screen">
-          <div className="bg-black text-white border-b-2 border-pink-400 py-3 px-4 flex flex-row gap-3 mb-2">
-          <img src={"/icons/"+FileIcon+".svg"} alt="" className="w-6" />
-          <p>{FileName}</p>
+          <div className="bg-black text-white border-b-2 border-pink-400 py-3 px-4 flex flex-row items-center gap-3 mb-2">
+          <img src={"/icons/"+FileIcon+".svg"} alt="" className="w-8" />
+          <p className="text-lg">{FileName}</p><p className="text-zinc-400 text-xs">{FilePath}</p>
           </div>
           <CodeEditor className="m-0 w-screen h-[98vh]" data = { FileContent } type = { FileType } path = {FilePath} onChange={SetContent}/>
         </div>

@@ -1,8 +1,9 @@
 // Prevents additional console window on Windows in release, DO NOT REMOVE!!
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
-use std::{collections::{HashMap, VecDeque}, fs, path};
+use std::{collections::{HashMap, VecDeque}, fs};
 use std::sync::Mutex;
 use serde::{Serialize, Deserialize};
+use tauri::api::file;
 use std::process::Command;
 
 
@@ -32,6 +33,13 @@ struct TempOpenFile {
     status: bool,
     file: File,
 }
+
+#[derive(Serialize, Deserialize, Debug)]
+struct OpenFileForMultipleFiles {
+    path: String,
+    name: String
+}
+
 struct GlobalState {
     files: Mutex<HashMap<String, File>>,
     recents: Mutex<VecDeque<String>>
@@ -104,7 +112,7 @@ fn close_file(state: tauri::State<GlobalState>, path: String) -> bool {
     let mut recents = state.recents.lock().unwrap();
     match recents.pop_front() {
         Some(_) => {
-            println!("{:?}", recents);
+
             return true
         },
         None => return false
@@ -116,7 +124,6 @@ fn  switch_file(state: tauri::State<GlobalState>, path: String) {
     let mut files = state.files.lock().unwrap();
     let mut recents = state.recents.lock().unwrap();
     add_to_recent(path, &mut recents, &mut files);
-    println!("{:?}", recents);
 }
 
 #[tauri::command]
@@ -178,24 +185,28 @@ fn update_open_file(state: tauri::State<GlobalState>, path: String, content: Str
 }
 
 #[tauri::command]
-fn get_open_files(state: tauri::State<GlobalState>) -> HashMap<String, String> {
+fn get_open_files(state: tauri::State<GlobalState>) -> Vec<OpenFileForMultipleFiles> {
     let files = state.files.lock().unwrap();
-    let mut data: HashMap<String, String> = HashMap::new();
-    for file in files.keys() {
-        let name: String = (files[file].name).clone();
-        data.insert(file.to_string(), name);
+    let recents = state.recents.lock().unwrap();
+    let mut data: Vec<OpenFileForMultipleFiles> = Vec::new();
+    for file_path in recents.iter() {
+        let file = files.get(file_path).unwrap();
+        let temp = OpenFileForMultipleFiles {
+            path: (file_path.clone()).to_string(),
+            name: file.name.clone()
+        };
+        data.push(temp)
     }
     return data;
 }
 
 #[tauri::command]
  fn open_new_window() -> bool {
-    let mut command = Command::new(r#".\JYNTAXE.exe"#);
-    //command.arg("/S");
-    let _exit_status = match command.status() {
+    let mut command = Command::new(r".\JYNTAXE.exe");
+    match command.spawn() {
         Ok(_) => return true,
-        Err(_) =>  return false
-    };
+        Err(_) => return false,
+    }
 }
 
 fn main() {

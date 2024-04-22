@@ -1,9 +1,8 @@
 import {  useRef } from 'react';
 import Editor from '@monaco-editor/react';
 import { update_open_file } from './FileOperations';
-//import File from './classes';
 import "./App.css";
-
+//D:\proj\codeeditor\lsp\rust-analyzer.exe
 const ModificationHandler = async (content, path,) => {
     update_open_file(path, content);
 }

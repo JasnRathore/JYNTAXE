@@ -1,4 +1,3 @@
-import { save } from "@tauri-apps/api/dialog";
 import { MessageCircleWarning } from "lucide-react";
 import { useEffect, useState, useRef } from "react";
 
