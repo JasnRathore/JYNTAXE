@@ -1,7 +1,12 @@
-export default function Home() {
+import { useEffect } from "react"
+
+export default function Home({folderName = ""}) {
+    useEffect(() => {
+    },[folderName]);
     return (
         <div className="flex flex-col w-full h-full text-zinc-400 items-center justify-center font-Iosevka gap-20 text-lg">
-            <p className="text-2xl ">JYNTAXE <span className="">v0.0.1</span></p>
+            <p className="text-2xl ">JYNTAXE<span className="ml-2">v0.0.1</span></p>
+            { folderName ? <p className="text-lg ">Current Folder:<span className="ml-2">{folderName}</span></p> : "" }
             <div className="flex flex-col gap-4 w-1/4 items-start ">
                 <p className="flex flex-row items-center justify-between w-full">
                     <span className="mr-4">All Commands:</span>

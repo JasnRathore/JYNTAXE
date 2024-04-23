@@ -1,11 +1,25 @@
 import { useState, useEffect } from "react";
 import { exit } from "@tauri-apps/api/process"
-import { getOpenFile, openFile,  openFolder, saveFile, closeFile, isOpenFilesEmpty, newFile, openNewWindow, getRecentFile } from "./FileOperations"
+import {
+  getOpenFile,
+  openFile,
+  openFolder,
+  saveFile,
+  closeFile,
+  isOpenFilesEmpty,
+  newFile,
+  openNewWindow,
+  getRecentFile,
+  quickOpenFile,
+  saveStateToFile,
+  getFolder
+} from "./FileOperations"
 
 import CodeEditor from "./CodeEditor";
 import CommandMenu from "./components/CommandMenu";
 import OpenFilesViewer from "./components/OpenFilesViewer";
 import { ConfirmDialog } from"./ConfirmDialog";
+import QuickOpen from "./QuickOpen";
 import Home from "./Home";
 
 import "./App.css";
@@ -46,6 +60,9 @@ function App() {
   const [FileIcon, SetFileIcon] = useState("");
   const [FilePath, SetFilePath] = useState("");
 
+  const [FolderPath, SetFolderPath] = useState("");
+
+  const [OpenQuickOpen, setOpenQuickOpen] = useState(false);
   const [OpenConfirm, setOpenConfirm] = useState(false);
 
   const useToast = async (type, message) => {
@@ -76,6 +93,32 @@ function App() {
       SetToasts((toasts) => toasts.filter((toast) => toast !== newtoast))
     }, 5000);
   };
+
+
+  useEffect(() => {
+    const initialLoadUp = async () => {
+      const flag = await isOpenFilesEmpty();
+      if (!flag) {
+        const filePath = await getRecentFile();
+        const fileData = await getOpenFile(filePath);
+        if (fileData.status) {
+          SetContent(fileData.file.content);
+          SetFileType(fileData.file.language);
+          SetFileName(fileData.file.name);
+          SetFileIcon(fileData.file.icon);
+          SetFilePath(filePath);
+          SetHomeState(false);
+        } else {
+          useToast("error", "Failed Setting Last Used File")
+        }
+      }
+      const folder = await getFolder();
+      SetFolderPath(folder);
+
+    }
+    initialLoadUp();
+  },[]);
+
 
   const fileSaveHandler = async () => {
     if (!isHomeOpen){
@@ -112,6 +155,25 @@ function App() {
           SetHomeState(false);
     }
   };
+
+  const fileQuickOpenHandler = async (path) => {
+    const [newFilePath, newFileName, newFileType, newFileIcon , FileData] = await quickOpenFile(path);
+    if (newFilePath) {
+          SetContent(FileData);
+          SetFileType(newFileType);
+          SetFileName(newFileName);
+          SetFileIcon(newFileIcon);
+          SetFilePath(newFilePath);
+          SetHomeState(false);
+    }
+  };
+
+  const folderOpenHandler = async () => {
+    const result = await openFolder();
+    if (result.status) {
+      SetFolderPath(result.folderPath);
+    };
+  }
 
   const newWindowHandler = async () => {
     const status = await openNewWindow();
@@ -251,31 +313,22 @@ function App() {
 
   };
 
-  const [CommandOptions, setCommandOptions] = useState([
-      createCommand("New File", fileNewHandler, ["Ctrl","n"]),
-      createCommand("Open File", fileOpenHandler, ["Ctrl","o"]),
-      createCommand("Open Folder", async () => {
-        openFolder();
-        //yet to implement
-      }, ["Ctrl","k","o"]),
-      createCommand("Open New Window", newWindowHandler, ["Ctrl","Shift","n"]),
-      createCommand("Save File", fileSaveHandler, ["Ctrl","s"]),
-      createCommand("Close Application", () => {closeApplication(0)}, ["Ctrl","q"]),
-      createCommand("Close File", fileCloseHandler, ["Ctrl","w"]),
-    ]);
+  const [CommandOptions, setCommandOptions] = useState([]);
 
   useEffect(() => {
     setCommandOptions([
       createCommand("New File", fileNewHandler, ["Ctrl","n"]),
       createCommand("Open File", fileOpenHandler, ["Ctrl","o"]),
-      createCommand("Open Folder", async () => {
-        openFolder();
-        //yet to implement
-      }, ["Ctrl","k","o"]),
+      createCommand("Open Folder", folderOpenHandler, ["Ctrl","k","o"]),
       createCommand("Open New Window", newWindowHandler, ["Ctrl","Shift","n"]),
       createCommand("Save File", fileSaveHandler, ["Ctrl","s"]),
-      createCommand("Close Application", () => {closeApplication(0)}, ["Ctrl","q"]),
+      createCommand("Close Application", async () => {
+        await saveStateToFile();
+        closeApplication(0);
+
+      }, ["Ctrl","q"]),
       createCommand("Close File", fileCloseHandler, ["Ctrl","w"]),
+      createCommand("Quick Open Files", () => {setOpenQuickOpen(true)}, ["Ctrl","p"]),
     ]);
   }, [isHomeOpen, FilePath, FileName]);
 
@@ -290,10 +343,9 @@ function App() {
           keys["o"] = false;
         }
         else if (event.ctrlKey && (currentKey === "o") && keys["k"]) {
-          openFolder();
+          folderOpenHandler();
           keys["k"] = false;
           keys[currentKey] = false;
-          SetHomeState(false);
         } else if (event.ctrlKey && (currentKey === "n") && !event.shiftKey) {
             await fileNewHandler()
             keys["n"] = false;
@@ -301,12 +353,8 @@ function App() {
           await newWindowHandler();
           keys["n"] = false;
       }
-
-        //else if (event.ctrlKey && (currentKey === "p")) {
-        //  event.preventDefault();
-        //  keys["p"] = false;
-        //}
         else if (event.ctrlKey && (currentKey === "q")) {
+          await saveStateToFile();
           closeApplication(0);
           keys["q"] = false;
         };
@@ -324,7 +372,7 @@ function App() {
         window.removeEventListener("keyup", remover);
     };
   }
-  , [isHomeOpen] );
+  , [isHomeOpen, FolderPath] );
 
   useEffect(() => {
     const handler = async (event) => {
@@ -355,8 +403,9 @@ function App() {
       <CommandMenu CommandOptions={CommandOptions}></CommandMenu>
       <OpenFilesViewer setCurrentFile={setCurrentFile}></OpenFilesViewer>
       <ConfirmDialog FileName={FileName} Open={OpenConfirm} handleConfirm={handleConfirm} ></ConfirmDialog>
+      <QuickOpen ParentOpen={OpenQuickOpen} SetParentOpen={setOpenQuickOpen} openFile={fileQuickOpenHandler} useToast={useToast}></QuickOpen>
       {
-        isHomeOpen ? <Home/> :
+        isHomeOpen ? <Home folderName={FolderPath}/> :
         <div className="h-screen p-0 w-screen">
           <div className="bg-black text-white border-b-2 border-pink-400 py-3 px-4 flex flex-row items-center gap-3 mb-2">
           <img src={"/icons/"+FileIcon+".svg"} alt="" className="w-8" />

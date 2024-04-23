@@ -18,6 +18,18 @@ export async function openFile() {
     return []
 }
 
+export async function quickOpenFile(path) {
+  if (path) {
+    let temp = path.split("\\");
+    const newFileName = temp[temp.length-1];
+    temp = newFileName.split(".");
+    const [newFileType, newFileIcon] = getFileTypeIcon(temp[temp.length-1]);
+    const content = await invoke("open_file", { path: path, name: newFileName, language: newFileType, icon: newFileIcon });
+    return [ path, newFileName, newFileType, newFileIcon ,content ]
+  }
+  return []
+}
+
 export async function newFile() {
   const path = await save({
     filters: [{
@@ -42,10 +54,21 @@ export async function openFolder() {
       filters: [{ name: 'All Directories', extensions: ['*'] }]
     });
     if (selected) {
-      console.log(selected)
+      const status = await invoke("open_folder", { path:selected });
+      return {
+        status: status,
+        folderPath: selected
+      }
+    }
+    return {
+      status: false,
+      folderPath: selected
     }
 }
-
+export async function getFolder() {
+  const folder = await invoke("get_folder");
+  return folder
+}
 export async function update_open_file(path, changes) {
   await invoke("update_open_file", { path: path, content: changes });
 }
@@ -86,6 +109,15 @@ export async function switchFile(path) {
 export async function getRecentFile() {
   const path = await invoke("get_recent_file");
   return path
+}
+
+export async function quickOpenSearch(query) {
+  const results = await invoke("quick_open_search", { query:query });
+  return results
+}
+
+export async function saveStateToFile() {
+  await invoke("save_state_to_file");
 }
 
 function getFileTypeIcon(input){

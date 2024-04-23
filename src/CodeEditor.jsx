@@ -36,6 +36,7 @@ function CodeEditor({ data, type, path , onChange}) {
         }}
         onMount={handleEditorMount}
         onChange={(val) => handleChange(val)}
+        onValidate={(event) => { console.log(event) }}
         />
         )
 }
