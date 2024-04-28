@@ -31,7 +31,7 @@ Toast Notifications
 ![Toast Notifications](readme/Toast.png)
 
 File Switcher {use <kbd>Alt</kbd>+<kbd>,</kbd> or <kbd>Alt</kbd>+<kbd>.</kbd>}
-![File Switcher](readme/FileSwitcher.png)
+![File Switcher](readme/FileSwitcher.PNG)
 
 Stores the Last files an Folders Open for Next Time the App Executes.
 ![Last State](readme/LastState.png)
