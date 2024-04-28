@@ -7,7 +7,6 @@ A minimalist fullscreen code editor built using Tauri, React, Rust, and Tailwind
 
 - **Syntax Highlighting**: Supports baisc syntax highlighting for popular programming languages.
 - **Fast and Responsive**: Utilizes Tauri for a native-like experience and React for a smooth UI.
-- **Cross-Platform**: Works seamlessly on Windows, macOS, and Linux.
 - **Minimalist Design**: Focuses on simplicity and ease of use.
 - **Navigation**: Navigation and Accesibilty is primarily through Key Bindings.
 
